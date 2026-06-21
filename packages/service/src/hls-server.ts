@@ -13,6 +13,8 @@ export async function startHlsServer(options: {
   bindHost: string;
   port: number;
   routePrefix: string;
+  rootMessage?: string;
+  missingMessage?: string;
 }): Promise<HlsServerHandle> {
   await ensureDir(options.rootDir);
 
@@ -24,8 +26,19 @@ export async function startHlsServer(options: {
       }
 
       const normalized = decodeURIComponent(req.url.split("?")[0] ?? "");
+      if (normalized === "/" && options.rootMessage) {
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.writeHead(200).end(options.rootMessage);
+        return;
+      }
       if (!normalized.startsWith(options.routePrefix)) {
         res.writeHead(404).end("Not Found");
+        return;
+      }
+
+      if (normalized === options.routePrefix && options.rootMessage) {
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.writeHead(200).end(options.rootMessage);
         return;
       }
 
@@ -42,7 +55,10 @@ export async function startHlsServer(options: {
       }
       res.writeHead(200).end(content);
     } catch (error) {
-      res.writeHead(503).end(error instanceof Error ? error.message : "Unavailable");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res
+        .writeHead(503)
+        .end(options.missingMessage ?? (error instanceof Error ? error.message : "Unavailable"));
     }
   });
 

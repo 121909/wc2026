@@ -54,7 +54,16 @@ export class M3uMixerService {
       rootDir: path.join(resolveAppDataDir(this.options.appDataDir), "runtime", "preview"),
       bindHost: "127.0.0.1",
       port: 18998,
-      routePrefix: "/preview/"
+      routePrefix: "/preview/",
+      rootMessage:
+        "Preview HLS is only available after you start a preview in the app.\n" +
+        "Available preview paths after startup:\n" +
+        "  /preview/video/index.m3u8\n" +
+        "  /preview/audio/index.m3u8\n" +
+        "  /preview/merged/index.m3u8\n" +
+        "This server is localhost-only.",
+      missingMessage:
+        "Preview stream is not running. Start video/audio/merged preview in the app first."
     });
 
     const settings = this.storage.getSettings();
@@ -62,7 +71,14 @@ export class M3uMixerService {
       rootDir: path.join(resolveAppDataDir(this.options.appDataDir), "runtime", "public"),
       bindHost: settings.publicBindHost,
       port: settings.publicPort,
-      routePrefix: "/"
+      routePrefix: "/",
+      rootMessage:
+        "Public HLS output is only available after you start output in the app.\n" +
+        "Main path:\n" +
+        "  /live/main.m3u8\n" +
+        "Use 127.0.0.1 only on the same machine. For other devices, use your LAN IP.",
+      missingMessage:
+        "Public output is not running. Start output in the app first, then open /live/main.m3u8."
     });
 
     this.startBackgroundLoops();
@@ -282,7 +298,14 @@ export class M3uMixerService {
         rootDir: path.join(resolveAppDataDir(this.options.appDataDir), "runtime", "public"),
         bindHost: settings.publicBindHost,
         port: settings.publicPort,
-        routePrefix: "/"
+        routePrefix: "/",
+        rootMessage:
+          "Public HLS output is only available after you start output in the app.\n" +
+          "Main path:\n" +
+          "  /live/main.m3u8\n" +
+          "Use 127.0.0.1 only on the same machine. For other devices, use your LAN IP.",
+        missingMessage:
+          "Public output is not running. Start output in the app first, then open /live/main.m3u8."
       });
     }
     this.startBackgroundLoops();

@@ -39,5 +39,9 @@ git push origin v0.1.0
 ## Notes
 
 - 需要系统可用的 `ffmpeg` 和 `ffprobe`。
-- 默认公共输出地址为 `http://127.0.0.1:18999/live/main.m3u8`。
-- 预览 HLS 服务固定在 `http://127.0.0.1:18998/preview/...`。
+- 公共输出只有在应用内点击“启动输出”后才会产生；默认本机地址为 `http://127.0.0.1:18999/live/main.m3u8`。
+- `127.0.0.1` 只对当前这台机器有效；其他设备要用局域网 IP，例如 `http://192.168.x.x:18999/live/main.m3u8`。
+- 预览 HLS 只有在应用内启动对应预览后才会产生，具体路径是：
+  - `http://127.0.0.1:18998/preview/video/index.m3u8`
+  - `http://127.0.0.1:18998/preview/audio/index.m3u8`
+  - `http://127.0.0.1:18998/preview/merged/index.m3u8`
