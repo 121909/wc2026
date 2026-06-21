@@ -55,11 +55,19 @@ jobs:
       - name: Build Linux release
         run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
+      - name: Collect Linux release files
+        shell: bash
+        run: |
+          mkdir -p release-files/linux
+          find apps/desktop/release -type f \
+            \( -name "*.AppImage" -o -name "*.yml" -o -name "*.yaml" -o -name "*.blockmap" \) \
+            -exec cp {} release-files/linux/ \;
+
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-linux
-          path: apps/desktop/release/**/*
+          path: release-files/linux/*
           if-no-files-found: error
 
   release-windows:
@@ -85,11 +93,19 @@ jobs:
       - name: Build Windows release
         run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
+      - name: Collect Windows release files
+        shell: bash
+        run: |
+          mkdir -p release-files/windows
+          find apps/desktop/release -type f \
+            \( -name "*.exe" -o -name "*.yml" -o -name "*.yaml" -o -name "*.blockmap" \) \
+            -exec cp {} release-files/windows/ \;
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: apps/desktop/release/**/*
+          path: release-files/windows/*
           if-no-files-found: error
 
   release-macos:
@@ -115,11 +131,19 @@ jobs:
       - name: Build macOS release
         run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
+      - name: Collect macOS release files
+        shell: bash
+        run: |
+          mkdir -p release-files/macos
+          find apps/desktop/release -type f \
+            \( -name "*.dmg" -o -name "*.zip" -o -name "*.yml" -o -name "*.yaml" -o -name "*.blockmap" \) \
+            -exec cp {} release-files/macos/ \;
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-macos
-          path: apps/desktop/release/**/*
+          path: release-files/macos/*
           if-no-files-found: error
 
   publish-release:
