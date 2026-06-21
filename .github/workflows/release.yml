@@ -53,7 +53,7 @@ jobs:
         run: npm run build --workspace=@m3u-mixer/desktop
 
       - name: Build Linux release
-        run: npx electron-builder --config apps/desktop/electron-builder.yml --projectDir apps/desktop
+        run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -83,7 +83,7 @@ jobs:
         run: npm run build --workspace=@m3u-mixer/desktop
 
       - name: Build Windows release
-        run: npx electron-builder --config apps/desktop/electron-builder.yml --projectDir apps/desktop
+        run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -113,7 +113,7 @@ jobs:
         run: npm run build --workspace=@m3u-mixer/desktop
 
       - name: Build macOS release
-        run: npx electron-builder --config apps/desktop/electron-builder.yml --projectDir apps/desktop
+        run: npx electron-builder --config electron-builder.yml --projectDir apps/desktop
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
