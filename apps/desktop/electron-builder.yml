@@ -11,18 +11,6 @@ extraMetadata:
 asar: true
 npmRebuild: false
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
-mac:
-  category: public.app-category.video
-  target:
-    - target: dmg
-      arch:
-        - x64
-        - arm64
-    - target: zip
-      arch:
-        - x64
-        - arm64
-  darkModeSupport: true
 win:
   target:
     - target: nsis
@@ -32,9 +20,3 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-linux:
-  category: AudioVideo
-  target:
-    - target: AppImage
-      arch:
-        - x64
