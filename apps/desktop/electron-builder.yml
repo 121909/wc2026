@@ -9,7 +9,7 @@ files:
 extraMetadata:
   main: out/main/index.js
 asar: true
-npmRebuild: false
+npmRebuild: true
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 win:
   target:

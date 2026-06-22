@@ -49,6 +49,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native modules for Electron
+        run: npx electron-builder install-app-deps --projectDir apps/desktop
+
       - name: Build app bundles
         run: npm run build --workspace=@m3u-mixer/desktop
 
