@@ -50,7 +50,8 @@ jobs:
         run: npm ci
 
       - name: Rebuild native modules for Electron
-        run: npx electron-builder install-app-deps --projectDir apps/desktop
+        working-directory: apps/desktop
+        run: npx electron-builder install-app-deps --platform win32 --arch x64
 
       - name: Build app bundles
         run: npm run build --workspace=@m3u-mixer/desktop
