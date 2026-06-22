@@ -9,6 +9,23 @@ import { registerIpcHandlers } from "./ipc";
 let mainWindow: BrowserWindow | null = null;
 let service: M3uMixerService | null = null;
 
+function getFallbackLogPath(): string {
+  return path.join(app.getPath("userData"), "bootstrap.log");
+}
+
+function writeFallbackLog(message: string, error?: unknown): void {
+  const lines = [
+    `[${new Date().toISOString()}] ${message}`,
+    error instanceof Error ? `${error.stack ?? error.message}` : error ? String(error) : ""
+  ].filter(Boolean);
+  try {
+    fs.mkdirSync(path.dirname(getFallbackLogPath()), { recursive: true });
+    fs.appendFileSync(getFallbackLogPath(), `${lines.join("\n")}\n`, "utf8");
+  } catch {
+    // Ignore fallback logging failures.
+  }
+}
+
 function resolvePreloadPath(): string {
   const candidates = [
     path.join(__dirname, "../preload/index.js"),
@@ -75,9 +92,16 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
-  log.initialize();
-  log.transports.file.level = "info";
-  log.info("App starting");
+  try {
+    log.initialize();
+    log.transports.file.level = "info";
+    log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs", "main.log");
+    log.info("App starting");
+    log.info("Log file", log.transports.file.getFile().path);
+    writeFallbackLog(`App starting. main log: ${log.transports.file.getFile().path}`);
+  } catch (error) {
+    writeFallbackLog("Failed to initialize electron-log", error);
+  }
   electronApp.setAppUserModelId("com.m3umixer.desktop");
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
@@ -92,6 +116,7 @@ app.whenReady().then(async () => {
     await createWindow();
   } catch (error) {
     log.error("App bootstrap failed", error);
+    writeFallbackLog("App bootstrap failed", error);
     throw error;
   }
 
@@ -116,8 +141,10 @@ app.on("before-quit", async () => {
 
 process.on("uncaughtException", (error) => {
   log.error("Uncaught exception", error);
+  writeFallbackLog("Uncaught exception", error);
 });
 
 process.on("unhandledRejection", (reason) => {
   log.error("Unhandled rejection", reason);
+  writeFallbackLog("Unhandled rejection", reason);
 });
