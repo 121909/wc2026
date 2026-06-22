@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { parseM3u } from "@m3u-mixer/core";
+import { normalizeChannelName, normalizeUrl, parseM3u } from "@m3u-mixer/core";
 import type { M3uFeed } from "@m3u-mixer/shared";
 import type { AppStorage } from "./storage";
 
@@ -9,6 +9,18 @@ function hashContent(content: string): string {
 
 export class FeedFetcher {
   constructor(private readonly storage: AppStorage) {}
+
+  private buildDirectHlsEntry(feed: M3uFeed) {
+    return [
+      {
+        displayName: feed.name,
+        normalizedName: normalizeChannelName(feed.name),
+        streamUrl: new URL(feed.url).toString(),
+        normalizedUrl: normalizeUrl(feed.url),
+        protocol: "hls" as const
+      }
+    ];
+  }
 
   async refreshFeeds(feedIds?: string[]): Promise<void> {
     const feeds = this.storage
@@ -48,17 +60,31 @@ export class FeedFetcher {
         throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
       }
 
-      const content = await response.text();
-      const parsed = parseM3u(content).map((entry) => ({
-        displayName: entry.name,
-        normalizedName: entry.normalizedName,
-        streamUrl: entry.streamUrl,
-        normalizedUrl: entry.normalizedUrl,
-        protocol:
-          entry.streamUrl.endsWith(".m3u8") || entry.streamUrl.includes(".m3u8?")
-            ? ("hls" as const)
-            : ("http-stream" as const)
-      }));
+      let contentHashInput = "";
+      let parsed: Array<{
+        displayName: string;
+        normalizedName: string;
+        streamUrl: string;
+        normalizedUrl: string;
+        protocol: "hls" | "http-stream";
+      }> = [];
+      if (feed.inputKind === "m3u8-direct") {
+        parsed = this.buildDirectHlsEntry(feed);
+        contentHashInput = JSON.stringify(parsed);
+      } else {
+        const content = await response.text();
+        contentHashInput = content;
+        parsed = parseM3u(content).map((entry) => ({
+          displayName: entry.name,
+          normalizedName: entry.normalizedName,
+          streamUrl: entry.streamUrl,
+          normalizedUrl: entry.normalizedUrl,
+          protocol:
+            entry.streamUrl.endsWith(".m3u8") || entry.streamUrl.includes(".m3u8?")
+              ? ("hls" as const)
+              : ("http-stream" as const)
+        }));
+      }
 
       this.storage.upsertCandidates(feed.id, parsed);
 
@@ -66,7 +92,7 @@ export class FeedFetcher {
       this.storage.updateFeedSnapshot(feed.id, {
         etag: response.headers.get("etag"),
         last_modified: response.headers.get("last-modified"),
-        content_hash: hashContent(content),
+        content_hash: hashContent(contentHashInput),
         fetched_at: new Date().toISOString(),
         stale_failures: staleFailures
       });

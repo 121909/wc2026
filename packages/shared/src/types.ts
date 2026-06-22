@@ -15,6 +15,7 @@ export const M3uFeedSchema = z.object({
   id: z.string(),
   name: z.string(),
   url: z.string().url(),
+  inputKind: z.enum(["m3u", "m3u8-direct"]).default("m3u"),
   refreshMinutes: z.number().int().min(5).max(240),
   lastRefreshAt: z.string().datetime().nullable(),
   stale: z.boolean()
@@ -111,6 +112,7 @@ export const FeedSaveInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),
   url: z.string().url(),
+  inputKind: z.enum(["m3u", "m3u8-direct"]).default("m3u"),
   refreshMinutes: z.number().int().min(5).max(240).default(15)
 });
 

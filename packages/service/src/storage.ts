@@ -22,6 +22,16 @@ type FeedSnapshotRow = {
   stale_failures: number;
 };
 
+type FeedRow = {
+  id: string;
+  name: string;
+  url: string;
+  input_kind: "m3u" | "m3u8-direct";
+  refresh_minutes: number;
+  last_refresh_at: string | null;
+  stale: number;
+};
+
 type CandidateRow = {
   id: string;
   group_id: string;
@@ -66,6 +76,7 @@ export class AppStorage {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         url TEXT NOT NULL UNIQUE,
+        input_kind TEXT NOT NULL DEFAULT 'm3u',
         refresh_minutes INTEGER NOT NULL,
         last_refresh_at TEXT,
         stale INTEGER NOT NULL DEFAULT 0
@@ -130,6 +141,15 @@ export class AppStorage {
         value_json TEXT NOT NULL
       );
     `);
+
+    const feedColumns = this.db.prepare(`PRAGMA table_info(feeds)`).all() as Array<{
+      name: string;
+    }>;
+    if (!feedColumns.some((column) => column.name === "input_kind")) {
+      this.db.exec(
+        `ALTER TABLE feeds ADD COLUMN input_kind TEXT NOT NULL DEFAULT 'm3u'`
+      );
+    }
   }
 
   private seedDefaults(): void {
@@ -152,44 +172,38 @@ export class AppStorage {
   listFeeds(): M3uFeed[] {
     const rows = this.db
       .prepare(
-        `SELECT id, name, url, refresh_minutes, last_refresh_at, stale
+        `SELECT id, name, url, input_kind, refresh_minutes, last_refresh_at, stale
          FROM feeds
          ORDER BY name COLLATE NOCASE ASC`
       )
-      .all() as Array<{
-        id: string;
-        name: string;
-        url: string;
-        refresh_minutes: number;
-        last_refresh_at: string | null;
-        stale: number;
-      }>;
+      .all() as FeedRow[];
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      url: row.url,
-      refreshMinutes: row.refresh_minutes,
-      lastRefreshAt: row.last_refresh_at,
-      stale: Boolean(row.stale)
-    }));
+    return rows.map((row) => this.mapFeed(row));
   }
 
-  saveFeed(input: { id?: string; name: string; url: string; refreshMinutes: number }): M3uFeed {
+  saveFeed(input: {
+    id?: string;
+    name: string;
+    url: string;
+    inputKind: "m3u" | "m3u8-direct";
+    refreshMinutes: number;
+  }): M3uFeed {
     const id = input.id ?? createId("feed");
     this.db
       .prepare(
-        `INSERT INTO feeds (id, name, url, refresh_minutes, stale)
-         VALUES (@id, @name, @url, @refreshMinutes, 0)
+        `INSERT INTO feeds (id, name, url, input_kind, refresh_minutes, stale)
+         VALUES (@id, @name, @url, @inputKind, @refreshMinutes, 0)
          ON CONFLICT(id) DO UPDATE SET
            name = excluded.name,
            url = excluded.url,
+           input_kind = excluded.input_kind,
            refresh_minutes = excluded.refresh_minutes`
       )
       .run({
         id,
         name: input.name,
         url: input.url,
+        inputKind: input.inputKind,
         refreshMinutes: input.refreshMinutes
       });
     return this.getFeed(id);
@@ -198,35 +212,31 @@ export class AppStorage {
   getFeed(feedId: string): M3uFeed {
     const row = this.db
       .prepare(
-        `SELECT id, name, url, refresh_minutes, last_refresh_at, stale
+        `SELECT id, name, url, input_kind, refresh_minutes, last_refresh_at, stale
          FROM feeds
          WHERE id = ?`
       )
-      .get(feedId) as
-      | {
-          id: string;
-          name: string;
-          url: string;
-          refresh_minutes: number;
-          last_refresh_at: string | null;
-          stale: number;
-        }
-      | undefined;
+      .get(feedId) as FeedRow | undefined;
     if (!row) {
       throw new Error(`Feed not found: ${feedId}`);
     }
-    return {
-      id: row.id,
-      name: row.name,
-      url: row.url,
-      refreshMinutes: row.refresh_minutes,
-      lastRefreshAt: row.last_refresh_at,
-      stale: Boolean(row.stale)
-    };
+    return this.mapFeed(row);
   }
 
   removeFeed(feedId: string): void {
     this.db.prepare(`DELETE FROM feeds WHERE id = ?`).run(feedId);
+  }
+
+  private mapFeed(row: FeedRow): M3uFeed {
+    return {
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      inputKind: row.input_kind ?? "m3u",
+      refreshMinutes: row.refresh_minutes,
+      lastRefreshAt: row.last_refresh_at,
+      stale: Boolean(row.stale)
+    };
   }
 
   getFeedSnapshot(feedId: string): FeedSnapshotRow | null {

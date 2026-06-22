@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FeedSaveInput } from "@m3u-mixer/shared";
 import { Section } from "./components/Section";
 import { VideoPreview } from "./components/VideoPreview";
 import { ChannelTable } from "./components/ChannelTable";
@@ -37,6 +38,7 @@ export function App() {
 
   const [feedName, setFeedName] = useState("");
   const [feedUrl, setFeedUrl] = useState("");
+  const [feedInputKind, setFeedInputKind] = useState<FeedSaveInput["inputKind"]>("m3u");
   const [portDraft, setPortDraft] = useState("18999");
   const [bindHostDraft, setBindHostDraft] = useState("0.0.0.0");
 
@@ -99,12 +101,14 @@ export function App() {
     await window.m3uMixer.feeds.save({
       name: feedName,
       url: feedUrl,
+      inputKind: feedInputKind,
       refreshMinutes: settings?.refreshMinutes ?? 15
     });
     const nextFeeds = await window.m3uMixer.feeds.list();
     setState({ feeds: nextFeeds });
     setFeedName("");
     setFeedUrl("");
+    setFeedInputKind("m3u");
     await refreshChannels("");
   };
 
@@ -162,11 +166,34 @@ export function App() {
               />
             </label>
             <label className="field">
-              <span>M3U 链接</span>
+              <span>输入类型</span>
+              <div className="toggle-row">
+                <button
+                  className={feedInputKind === "m3u" ? "role-button active" : "role-button"}
+                  onClick={() => setFeedInputKind("m3u")}
+                  type="button"
+                >
+                  M3U 订阅
+                </button>
+                <button
+                  className={feedInputKind === "m3u8-direct" ? "role-button active" : "role-button"}
+                  onClick={() => setFeedInputKind("m3u8-direct")}
+                  type="button"
+                >
+                  单条 M3U8
+                </button>
+              </div>
+            </label>
+            <label className="field">
+              <span>{feedInputKind === "m3u8-direct" ? "M3U8 地址" : "M3U 链接"}</span>
               <input
                 value={feedUrl}
                 onChange={(event) => setFeedUrl(event.target.value)}
-                placeholder="https://example.com/list.m3u"
+                placeholder={
+                  feedInputKind === "m3u8-direct"
+                    ? "https://example.com/live/index.m3u8"
+                    : "https://example.com/list.m3u"
+                }
               />
             </label>
             <button className="primary-button" onClick={() => void saveFeed()}>
@@ -178,6 +205,9 @@ export function App() {
               <div key={feed.id} className="feed-card">
                 <div>
                   <strong>{feed.name}</strong>
+                  <div className="feed-kind">
+                    {feed.inputKind === "m3u8-direct" ? "单条 M3U8" : "M3U 订阅"}
+                  </div>
                   <div className="feed-meta">{feed.url}</div>
                 </div>
                 <div className="feed-actions">

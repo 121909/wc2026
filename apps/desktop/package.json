@@ -1,6 +1,6 @@
 {
   "name": "@m3u-mixer/desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "productName": "M3U Mixer",
   "type": "module",
   "main": "out/main/index.js",
