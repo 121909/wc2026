@@ -27,6 +27,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "@electron-toolkit/utils": "^4.0.0",
     "@vitejs/plugin-react": "^4.5.2",
     "electron": "36.4.0",

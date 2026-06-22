@@ -51,7 +51,7 @@ jobs:
 
       - name: Rebuild native modules for Electron
         working-directory: apps/desktop
-        run: npx electron-builder install-app-deps --platform win32 --arch x64
+        run: npx electron-rebuild -f -w better-sqlite3 -v 36.4.0
 
       - name: Build app bundles
         run: npm run build --workspace=@m3u-mixer/desktop
