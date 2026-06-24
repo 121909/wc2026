@@ -46,7 +46,8 @@ export class M3uMixerService {
     this.prober = new ChannelProber(this.storage, { ffprobePath: options.ffprobePath });
     this.ffmpeg = new FfmpegManager({
       ffmpegPath: options.ffmpegPath,
-      tempRoot: path.join(appDataDir, "runtime")
+      tempRoot: path.join(appDataDir, "runtime"),
+      onLog: (level, message) => this.diagnostics.push(level, message)
     });
   }
 
@@ -229,8 +230,16 @@ export class M3uMixerService {
       ? this.storage.getCandidate(input.audioCandidateId)
       : null;
     if (input.kind === "audio" && audioCandidate && !audioCandidate.hasVideo) {
+      this.diagnostics.push(
+        "warn",
+        `Preview skipped (${input.kind}): candidate ${audioCandidate.id} has no video track`
+      );
       return { url: null, note: "当前音频源无视频轨，无法画面预览" };
     }
+    this.diagnostics.push(
+      "info",
+      `Starting preview (${input.kind}) with video=${videoCandidate?.id ?? "none"} audio=${audioCandidate?.id ?? "none"} delay=${input.videoDelayMs}ms`
+    );
     const job = await this.ffmpeg.startPreview({
       kind: input.kind,
       origin: this.previewServer.origin,
@@ -241,12 +250,22 @@ export class M3uMixerService {
     if (job) {
       const ready = await this.waitForFile(job.manifestPath, 8000);
       if (!ready) {
-        const logExcerpt = this.ffmpeg.getJobLog(input.kind).trim();
+        const logExcerpt = this.ffmpeg.getJobLogTail(input.kind);
+        this.diagnostics.push(
+          "error",
+          logExcerpt
+            ? `Preview manifest timeout (${input.kind}): ${logExcerpt}`
+            : `Preview manifest timeout (${input.kind}): no ffmpeg output captured`
+        );
         return {
           url: null,
-          note: logExcerpt ? `预览未生成清单：${logExcerpt.slice(-240)}` : "预览未生成清单文件"
+          note: logExcerpt ? `预览未生成清单：${logExcerpt}` : "预览未生成清单文件"
         };
       }
+      this.diagnostics.push(
+        "info",
+        `Preview ready (${input.kind}) -> ${job.outputUrl}`
+      );
     }
     return {
       url: job?.outputUrl ?? null,

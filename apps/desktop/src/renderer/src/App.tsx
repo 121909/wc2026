@@ -97,6 +97,11 @@ export function App() {
     });
   };
 
+  const refreshLogs = async () => {
+    const latestLogs = await window.m3uMixer.diagnostics.tail(100);
+    setState({ logs: latestLogs });
+  };
+
   const startPreview = async (kind: "video" | "audio" | "merged") => {
     const videoCandidateId = findBestCandidateId(selectedVideoGroupId, candidates);
     const audioCandidateId = findBestCandidateId(selectedAudioGroupId, candidates);
@@ -158,6 +163,7 @@ export function App() {
           activeKind: null
         }));
       }
+      await refreshLogs();
     } catch (error) {
       const message = error instanceof Error ? error.message : "预览启动失败";
       if (kind === "video") {
@@ -185,6 +191,7 @@ export function App() {
           activeKind: null
         }));
       }
+      await refreshLogs();
     }
   };
 

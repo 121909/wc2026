@@ -17,6 +17,7 @@ export type FfmpegJob = {
 type FfmpegManagerOptions = {
   ffmpegPath?: string;
   tempRoot: string;
+  onLog?: (level: "info" | "warn" | "error", message: string) => void;
 };
 
 export class FfmpegManager {
@@ -91,6 +92,10 @@ export class FfmpegManager {
       stdio: "pipe"
     });
     this.captureJobLogs(input.kind, child);
+    this.emitLog(
+      "info",
+      `Started ffmpeg preview job (${input.kind}) -> ${manifestPath}`
+    );
     this.jobs.set(input.kind, child);
 
     return {
@@ -134,6 +139,7 @@ export class FfmpegManager {
       stdio: "pipe"
     });
     this.captureJobLogs(kind, child);
+    this.emitLog("info", `Started ffmpeg output job -> ${manifestPath}`);
     this.jobs.set(kind, child);
 
     return {
@@ -155,10 +161,44 @@ export class FfmpegManager {
     };
     child.stderr.on("data", pushLog);
     child.stdout.on("data", pushLog);
+    child.once("error", (error) => {
+      this.emitLog("error", `ffmpeg ${kind} process error: ${error.message}`);
+    });
+    child.once("exit", (code, signal) => {
+      if (signal) {
+        this.emitLog("info", `ffmpeg ${kind} stopped by signal ${signal}`);
+        return;
+      }
+      if (code === 0) {
+        this.emitLog("info", `ffmpeg ${kind} exited normally`);
+        return;
+      }
+      const excerpt = this.getJobLogTail(kind);
+      this.emitLog(
+        "error",
+        excerpt
+          ? `ffmpeg ${kind} exited with code ${code}: ${excerpt}`
+          : `ffmpeg ${kind} exited with code ${code}`
+      );
+    });
   }
 
   getJobLog(kind: JobKind): string {
     return (this.jobLogs.get(kind) ?? []).join("");
+  }
+
+  getJobLogTail(kind: JobKind, maxLines = 8): string {
+    return (this.jobLogs.get(kind) ?? [])
+      .join("")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(-maxLines)
+      .join(" | ");
+  }
+
+  private emitLog(level: "info" | "warn" | "error", message: string): void {
+    this.options.onLog?.(level, message);
   }
 
   private commonInputArgs(url: string): string[] {
