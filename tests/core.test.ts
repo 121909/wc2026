@@ -96,10 +96,12 @@ describe("sorting", () => {
         sourceCount: 1,
         bestCandidateId: "1",
         aggregateHealth: {
+          status: "available",
           available: true,
           bestStartupLatencyMs: 900,
           successRate24h: 0.9,
-          continuousAvailableSeconds: 500
+          continuousAvailableSeconds: 500,
+          lastCheckedAt: new Date().toISOString()
         }
       },
       {
@@ -110,10 +112,12 @@ describe("sorting", () => {
         sourceCount: 1,
         bestCandidateId: "2",
         aggregateHealth: {
+          status: "available",
           available: true,
           bestStartupLatencyMs: 700,
           successRate24h: 0.9,
-          continuousAvailableSeconds: 1000
+          continuousAvailableSeconds: 1000,
+          lastCheckedAt: new Date().toISOString()
         }
       }
     ];

@@ -1,5 +1,15 @@
 import type { ChannelCandidate, ChannelGroup, ProbeResult } from "@m3u-mixer/shared";
 
+function healthRank(group: ChannelGroup): number {
+  if (group.aggregateHealth.status === "available") {
+    return 0;
+  }
+  if (group.aggregateHealth.status === "unknown") {
+    return 1;
+  }
+  return 2;
+}
+
 function compareProbe(a: ProbeResult, b: ProbeResult): number {
   if (a.available !== b.available) {
     return a.available ? -1 : 1;
@@ -30,8 +40,10 @@ export function sortCandidates(candidates: ChannelCandidate[]): ChannelCandidate
 
 export function sortGroups(groups: ChannelGroup[]): ChannelGroup[] {
   return [...groups].sort((left, right) => {
-    if (left.aggregateHealth.available !== right.aggregateHealth.available) {
-      return left.aggregateHealth.available ? -1 : 1;
+    const leftRank = healthRank(left);
+    const rightRank = healthRank(right);
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
     }
     if (left.aggregateHealth.continuousAvailableSeconds !== right.aggregateHealth.continuousAvailableSeconds) {
       return right.aggregateHealth.continuousAvailableSeconds - left.aggregateHealth.continuousAvailableSeconds;

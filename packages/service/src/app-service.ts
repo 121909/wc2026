@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs/promises";
 import type {
   AppSettings,
   ChannelCandidate,
@@ -237,6 +238,16 @@ export class M3uMixerService {
       audioCandidate,
       videoDelayMs: input.videoDelayMs
     });
+    if (job) {
+      const ready = await this.waitForFile(job.manifestPath, 8000);
+      if (!ready) {
+        const logExcerpt = this.ffmpeg.getJobLog(input.kind).trim();
+        return {
+          url: null,
+          note: logExcerpt ? `预览未生成清单：${logExcerpt.slice(-240)}` : "预览未生成清单文件"
+        };
+      }
+    }
     return {
       url: job?.outputUrl ?? null,
       note: job ? null : "缺少预览所需的频道选择"
@@ -410,5 +421,21 @@ export class M3uMixerService {
 
   getCurrentOutputSession(): OutputSession {
     return this.storage.getOutputSession();
+  }
+
+  private async waitForFile(filePath: string, timeoutMs: number): Promise<boolean> {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      try {
+        const stat = await fs.stat(filePath);
+        if (stat.size > 0) {
+          return true;
+        }
+      } catch {
+        // keep waiting until timeout
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return false;
   }
 }

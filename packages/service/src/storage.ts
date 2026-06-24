@@ -53,6 +53,8 @@ type CandidateRow = {
   probe_failure_reason: string | null;
 };
 
+const UNKNOWN_CHECKED_AT = new Date(0).toISOString();
+
 type GroupRow = {
   id: string;
   display_name: string;
@@ -450,7 +452,7 @@ export class AppStorage {
   private mapCandidate(row: CandidateRow): ChannelCandidate {
     const probe: ProbeResult = {
       available: Boolean(row.probe_available),
-      checkedAt: row.probe_checked_at ?? new Date(0).toISOString(),
+      checkedAt: row.probe_checked_at ?? UNKNOWN_CHECKED_AT,
       startupLatencyMs: row.probe_startup_latency_ms,
       successRate24h: row.probe_success_rate_24h,
       continuousAvailableSeconds: row.probe_continuous_available_seconds,
@@ -492,6 +494,14 @@ export class AppStorage {
       );
     });
     const best = sorted[0];
+    const hasProbeResult = Boolean(
+      best && best.probe.checkedAt && best.probe.checkedAt !== UNKNOWN_CHECKED_AT
+    );
+    const status = !best || !hasProbeResult
+      ? "unknown"
+      : best.probe.available
+        ? "available"
+        : "unavailable";
     return {
       id: row.id,
       displayName: row.display_name,
@@ -500,10 +510,12 @@ export class AppStorage {
       sourceCount: new Set(candidates.map((candidate) => candidate.feedId)).size,
       bestCandidateId: best?.id ?? null,
       aggregateHealth: {
+        status,
         available: best?.probe.available ?? false,
         bestStartupLatencyMs: best?.probe.startupLatencyMs ?? null,
         successRate24h: best?.probe.successRate24h ?? 0,
-        continuousAvailableSeconds: best?.probe.continuousAvailableSeconds ?? 0
+        continuousAvailableSeconds: best?.probe.continuousAvailableSeconds ?? 0,
+        lastCheckedAt: hasProbeResult ? best?.probe.checkedAt ?? null : null
       }
     };
   }

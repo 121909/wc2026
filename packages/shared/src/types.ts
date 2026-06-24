@@ -24,10 +24,12 @@ export const M3uFeedSchema = z.object({
 export type M3uFeed = z.infer<typeof M3uFeedSchema>;
 
 export const AggregateHealthSchema = z.object({
+  status: z.enum(["unknown", "available", "unavailable"]),
   available: z.boolean(),
   bestStartupLatencyMs: z.number().int().nonnegative().nullable(),
   successRate24h: z.number().min(0).max(1),
-  continuousAvailableSeconds: z.number().int().nonnegative()
+  continuousAvailableSeconds: z.number().int().nonnegative(),
+  lastCheckedAt: z.string().datetime().nullable()
 });
 
 export type AggregateHealth = z.infer<typeof AggregateHealthSchema>;

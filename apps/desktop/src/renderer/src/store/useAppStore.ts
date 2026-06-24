@@ -6,6 +6,10 @@ type PreviewState = {
   audioUrl: string | null;
   mergedUrl: string | null;
   audioNote: string | null;
+  videoError: string | null;
+  audioError: string | null;
+  mergedError: string | null;
+  activeKind: "video" | "audio" | "merged" | null;
 };
 
 type AppState = {
@@ -41,7 +45,11 @@ export const useAppStore = create<AppState>((set) => ({
     videoUrl: null,
     audioUrl: null,
     mergedUrl: null,
-    audioNote: null
+    audioNote: null,
+    videoError: null,
+    audioError: null,
+    mergedError: null,
+    activeKind: null
   },
   loading: true,
   setState: (partial) => set(partial)

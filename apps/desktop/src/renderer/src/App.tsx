@@ -17,6 +17,21 @@ function findBestCandidateId(
   return groupCandidates.find((candidate) => candidate.probe.available)?.id ?? groupCandidates[0]?.id ?? null;
 }
 
+function ensureUrlUsesLoopback(url: string | null): string | null {
+  if (!url) {
+    return null;
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "0.0.0.0") {
+      parsed.hostname = "127.0.0.1";
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 export function App() {
   useBoot();
   const {
@@ -42,6 +57,14 @@ export function App() {
   const [portDraft, setPortDraft] = useState("18999");
   const [bindHostDraft, setBindHostDraft] = useState("0.0.0.0");
 
+  const mergePreview = (
+    updater: (current: typeof preview) => typeof preview
+  ) => {
+    setState({
+      preview: updater(useAppStore.getState().preview)
+    });
+  };
+
   useEffect(() => {
     if (settings) {
       setPortDraft(String(settings.publicPort));
@@ -66,7 +89,7 @@ export function App() {
       groups: result.groups,
       candidates: result.candidates,
       session: latestSession,
-      playbackUrls: latestUrls,
+      playbackUrls: latestUrls.map((url) => ensureUrlUsesLoopback(url) ?? url),
       logs: latestLogs,
       selectedVideoGroupId: latestSession.videoGroupId,
       selectedAudioGroupId: latestSession.audioGroupId,
@@ -77,20 +100,91 @@ export function App() {
   const startPreview = async (kind: "video" | "audio" | "merged") => {
     const videoCandidateId = findBestCandidateId(selectedVideoGroupId, candidates);
     const audioCandidateId = findBestCandidateId(selectedAudioGroupId, candidates);
-    const result = await window.m3uMixer.session.preview.start({
-      kind,
-      videoCandidateId,
-      audioCandidateId,
-      videoDelayMs
-    });
     if (kind === "video") {
-      setState({ preview: { ...preview, videoUrl: result.url, audioNote: preview.audioNote } });
+      mergePreview((current) => ({
+        ...current,
+        activeKind: kind,
+        videoError: null,
+        videoUrl: null
+      }));
     }
     if (kind === "audio") {
-      setState({ preview: { ...preview, audioUrl: result.url, audioNote: result.note } });
+      mergePreview((current) => ({
+        ...current,
+        activeKind: kind,
+        audioError: null,
+        audioUrl: null,
+        audioNote: null
+      }));
     }
     if (kind === "merged") {
-      setState({ preview: { ...preview, mergedUrl: result.url } });
+      mergePreview((current) => ({
+        ...current,
+        activeKind: kind,
+        mergedError: null,
+        mergedUrl: null
+      }));
+    }
+
+    try {
+      const result = await window.m3uMixer.session.preview.start({
+        kind,
+        videoCandidateId,
+        audioCandidateId,
+        videoDelayMs
+      });
+      if (kind === "video") {
+        mergePreview((current) => ({
+          ...current,
+          videoUrl: ensureUrlUsesLoopback(result.url),
+          videoError: result.url ? null : result.note ?? "无法启动视频预览",
+          activeKind: null
+        }));
+      }
+      if (kind === "audio") {
+        mergePreview((current) => ({
+          ...current,
+          audioUrl: ensureUrlUsesLoopback(result.url),
+          audioNote: result.note,
+          audioError: result.url || result.note ? null : "无法启动音频预览",
+          activeKind: null
+        }));
+      }
+      if (kind === "merged") {
+        mergePreview((current) => ({
+          ...current,
+          mergedUrl: ensureUrlUsesLoopback(result.url),
+          mergedError: result.url ? null : result.note ?? "无法启动合流预览",
+          activeKind: null
+        }));
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "预览启动失败";
+      if (kind === "video") {
+        mergePreview((current) => ({
+          ...current,
+          videoUrl: null,
+          videoError: message,
+          activeKind: null
+        }));
+      }
+      if (kind === "audio") {
+        mergePreview((current) => ({
+          ...current,
+          audioUrl: null,
+          audioNote: null,
+          audioError: message,
+          activeKind: null
+        }));
+      }
+      if (kind === "merged") {
+        mergePreview((current) => ({
+          ...current,
+          mergedUrl: null,
+          mergedError: message,
+          activeKind: null
+        }));
+      }
     }
   };
 
@@ -119,7 +213,7 @@ export function App() {
     });
     setState({ settings: next });
     const latestUrls = await window.m3uMixer.session.output.urls();
-    setState({ playbackUrls: latestUrls });
+    setState({ playbackUrls: latestUrls.map((url) => ensureUrlUsesLoopback(url) ?? url) });
   };
 
   const startOutput = async () => {
@@ -132,7 +226,10 @@ export function App() {
       videoDelayMs
     });
     const latestUrls = await window.m3uMixer.session.output.urls();
-    setState({ session: next, playbackUrls: latestUrls });
+    setState({
+      session: next,
+      playbackUrls: latestUrls.map((url) => ensureUrlUsesLoopback(url) ?? url)
+    });
     await startPreview("merged");
   };
 
@@ -142,8 +239,9 @@ export function App() {
       session: next,
       playbackUrls: [],
       preview: {
-        ...preview,
-        mergedUrl: null
+        ...useAppStore.getState().preview,
+        mergedUrl: null,
+        mergedError: null
       }
     });
   };
@@ -155,7 +253,7 @@ export function App() {
   return (
     <main className="app-shell">
       <aside className="left-column">
-        <Section title="源管理">
+        <Section title="添加源">
           <div className="stack">
             <label className="field">
               <span>名称</span>
@@ -200,38 +298,69 @@ export function App() {
               添加并刷新
             </button>
           </div>
+        </Section>
+
+        <Section
+          title={`已添加源 (${feeds.length})`}
+          action={
+            feeds.length > 0 ? (
+              <button
+                className="secondary-button"
+                onClick={() => void window.m3uMixer.feeds.refresh().then(() => refreshChannels())}
+              >
+                全部刷新
+              </button>
+            ) : null
+          }
+        >
           <div className="feed-list">
-            {feeds.map((feed) => (
-              <div key={feed.id} className="feed-card">
-                <div>
-                  <strong>{feed.name}</strong>
-                  <div className="feed-kind">
-                    {feed.inputKind === "m3u8-direct" ? "单条 M3U8" : "M3U 订阅"}
+            {feeds.length === 0 ? (
+              <div className="empty-card">还没有添加任何 M3U 源。</div>
+            ) : (
+              feeds.map((feed) => (
+                <div key={feed.id} className="feed-card">
+                  <div>
+                    <strong>{feed.name}</strong>
+                    <div className="feed-card-topline">
+                      <div className="feed-kind">
+                        {feed.inputKind === "m3u8-direct" ? "单条 M3U8" : "M3U 订阅"}
+                      </div>
+                      <div className={`feed-state ${feed.stale ? "stale" : "fresh"}`}>
+                        {feed.stale ? "刷新异常" : "正常"}
+                      </div>
+                    </div>
+                    <div className="feed-meta">{feed.url}</div>
+                    <div className="feed-submeta">
+                      最近刷新：
+                      {feed.lastRefreshAt
+                        ? new Date(feed.lastRefreshAt).toLocaleString()
+                        : "尚未刷新"}
+                    </div>
                   </div>
-                  <div className="feed-meta">{feed.url}</div>
+                  <div className="feed-actions">
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        void window.m3uMixer.feeds.refresh([feed.id]).then(() => refreshChannels())
+                      }
+                    >
+                      刷新
+                    </button>
+                    <button
+                      className="danger-button"
+                      onClick={() =>
+                        void window.m3uMixer.feeds.remove(feed.id).then(async () => {
+                          setState({ feeds: await window.m3uMixer.feeds.list() });
+                          await refreshChannels();
+                        })
+                      }
+                    >
+                      删除
+                    </button>
+                  </div>
                 </div>
-                <div className="feed-actions">
-                  <button
-                    onClick={() =>
-                      void window.m3uMixer.feeds.refresh([feed.id]).then(() => refreshChannels())
-                    }
-                  >
-                    刷新
-                  </button>
-                  <button
-                    className="danger-button"
-                    onClick={() =>
-                      void window.m3uMixer.feeds.remove(feed.id).then(async () => {
-                        setState({ feeds: await window.m3uMixer.feeds.list() });
-                        await refreshChannels();
-                      })
-                    }
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Section>
 
@@ -281,6 +410,7 @@ export function App() {
                 placeholder="按名称过滤频道"
               />
               <button
+                className="secondary-button"
                 onClick={() =>
                   void window.m3uMixer.channels
                     .probe({
@@ -294,6 +424,7 @@ export function App() {
                 Test Visible
               </button>
               <button
+                className="secondary-button"
                 onClick={() =>
                   void window.m3uMixer.channels
                     .probe({ mode: "selected", visibleGroupIds: [], groupIds: [] })
@@ -303,6 +434,7 @@ export function App() {
                 Test Selected
               </button>
               <button
+                className="secondary-button"
                 onClick={() =>
                   void window.m3uMixer.channels
                     .probe({ mode: "all", visibleGroupIds: [], groupIds: [] })
@@ -330,12 +462,16 @@ export function App() {
             <div className="selection-card">
               <span>视频组</span>
               <strong>{groups.find((group) => group.id === selectedVideoGroupId)?.displayName ?? "未选择"}</strong>
-              <button onClick={() => void startPreview("video")}>预览视频源</button>
+              <button className="secondary-button" onClick={() => void startPreview("video")}>
+                预览视频源
+              </button>
             </div>
             <div className="selection-card">
               <span>音频组</span>
               <strong>{groups.find((group) => group.id === selectedAudioGroupId)?.displayName ?? "未选择"}</strong>
-              <button onClick={() => void startPreview("audio")}>预览音频源</button>
+              <button className="secondary-button" onClick={() => void startPreview("audio")}>
+                预览音频源
+              </button>
             </div>
           </div>
           <label className="field">
@@ -371,9 +507,25 @@ export function App() {
 
         <Section title="预览">
           <div className="preview-stack">
-            <VideoPreview title="视频源预览" url={preview.videoUrl} />
-            <VideoPreview title="音频源预览" url={preview.audioUrl} note={preview.audioNote} />
-            <VideoPreview title="合流预览" url={preview.mergedUrl} />
+            <VideoPreview
+              title="视频源预览"
+              url={preview.videoUrl}
+              error={preview.videoError}
+              isLoading={preview.activeKind === "video"}
+            />
+            <VideoPreview
+              title="音频源预览"
+              url={preview.audioUrl}
+              note={preview.audioNote}
+              error={preview.audioError}
+              isLoading={preview.activeKind === "audio"}
+            />
+            <VideoPreview
+              title="合流预览"
+              url={preview.mergedUrl}
+              error={preview.mergedError}
+              isLoading={preview.activeKind === "merged"}
+            />
           </div>
         </Section>
 

@@ -22,6 +22,7 @@ type FfmpegManagerOptions = {
 export class FfmpegManager {
   private readonly ffmpegPath: string;
   private readonly jobs = new Map<JobKind, ChildProcessWithoutNullStreams>();
+  private readonly jobLogs = new Map<JobKind, string[]>();
 
   constructor(private readonly options: FfmpegManagerOptions) {
     this.ffmpegPath = options.ffmpegPath ?? "ffmpeg";
@@ -42,6 +43,7 @@ export class FfmpegManager {
       }, 3000);
     });
     this.jobs.delete(kind);
+    this.jobLogs.delete(kind);
   }
 
   async stopAll(): Promise<void> {
@@ -88,6 +90,7 @@ export class FfmpegManager {
     const child = spawn(this.ffmpegPath, args, {
       stdio: "pipe"
     });
+    this.captureJobLogs(input.kind, child);
     this.jobs.set(input.kind, child);
 
     return {
@@ -130,6 +133,7 @@ export class FfmpegManager {
     const child = spawn(this.ffmpegPath, args, {
       stdio: "pipe"
     });
+    this.captureJobLogs(kind, child);
     this.jobs.set(kind, child);
 
     return {
@@ -137,6 +141,24 @@ export class FfmpegManager {
       outputUrl,
       profile
     };
+  }
+
+  private captureJobLogs(kind: JobKind, child: ChildProcessWithoutNullStreams): void {
+    this.jobLogs.set(kind, []);
+    const pushLog = (chunk: Buffer) => {
+      const history = this.jobLogs.get(kind) ?? [];
+      history.push(chunk.toString("utf8"));
+      if (history.length > 20) {
+        history.splice(0, history.length - 20);
+      }
+      this.jobLogs.set(kind, history);
+    };
+    child.stderr.on("data", pushLog);
+    child.stdout.on("data", pushLog);
+  }
+
+  getJobLog(kind: JobKind): string {
+    return (this.jobLogs.get(kind) ?? []).join("");
   }
 
   private commonInputArgs(url: string): string[] {

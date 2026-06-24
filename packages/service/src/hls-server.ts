@@ -20,6 +20,13 @@ export async function startHlsServer(options: {
 
   const server = http.createServer(async (req, res) => {
     try {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
+      if (req.method === "OPTIONS") {
+        res.writeHead(204).end();
+        return;
+      }
       if (!req.url) {
         res.writeHead(400).end("Bad Request");
         return;

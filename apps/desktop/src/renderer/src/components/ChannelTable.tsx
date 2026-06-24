@@ -18,6 +18,16 @@ type ChannelTableProps = {
 };
 
 export function ChannelTable(props: ChannelTableProps) {
+  const healthLabel = (group: ChannelGroup) => {
+    if (group.aggregateHealth.status === "available") {
+      return "可用";
+    }
+    if (group.aggregateHealth.status === "unavailable") {
+      return "不可用";
+    }
+    return "未检测";
+  };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("displayName", {
@@ -27,7 +37,11 @@ export function ChannelTable(props: ChannelTableProps) {
       columnHelper.display({
         id: "available",
         header: "当前可用",
-        cell: (info) => (info.row.original.aggregateHealth.available ? "可用" : "不可用")
+        cell: (info) => (
+          <span className={`health-badge ${info.row.original.aggregateHealth.status}`}>
+            {healthLabel(info.row.original)}
+          </span>
+        )
       }),
       columnHelper.accessor((row) => row.aggregateHealth.continuousAvailableSeconds, {
         id: "continuousAvailableSeconds",
