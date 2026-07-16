@@ -1,7 +1,0 @@
-#EXTM3U
-#EXTINF:-1 tvg-id="news1" group-title="News",CCTV 1 HD
-https://example.com/live/cctv1/index.m3u8
-#EXTINF:-1 tvg-id="news1-backup" group-title="News",CCTV 1 HD
-https://backup.example.com/live/cctv1/index.m3u8
-#EXTINF:-1 tvg-id="music1" group-title="Music",Music Radio
-https://example.com/audio/music.aac

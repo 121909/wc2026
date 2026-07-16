@@ -1,0 +1,211 @@
+<Window x:Class="HearthstoneAgent.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Hearthstone Agent Recorder"
+        Width="1180"
+        Height="780"
+        MinWidth="960"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen">
+  <Grid Background="{StaticResource BackgroundBrush}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="72" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="34" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid Margin="28,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Hearthstone Agent" FontSize="22" FontWeight="Bold" />
+          <TextBlock Text="Windows 被动对局记录器 · v0.1" Foreground="{StaticResource TextMutedBrush}" FontSize="12" Margin="0,3,0,0" />
+        </StackPanel>
+        <Border Grid.Column="1"
+                Padding="12,7"
+                CornerRadius="16"
+                VerticalAlignment="Center"
+                Background="{StaticResource MutedSurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse Width="9" Height="9" Fill="{Binding StatusBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding RecorderStateText}" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <Grid Margin="28,24">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="3*" MinWidth="560" />
+          <ColumnDefinition Width="20" />
+          <ColumnDefinition Width="2*" MinWidth="320" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0">
+          <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+            <StackPanel>
+              <TextBlock Text="记录设置" Style="{StaticResource SectionTitleStyle}" />
+
+              <TextBlock Text="Power.log 路径" Style="{StaticResource FieldLabelStyle}" />
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Text="{Binding PowerLogPath, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource InputTextBoxStyle}"
+                         IsEnabled="{Binding CanEditSettings}"
+                         AutomationProperties.Name="Power.log 路径" />
+                <Button Grid.Column="1" Content="自动定位" Command="{Binding AutoLocateCommand}" Style="{StaticResource BaseButtonStyle}" Margin="10,0,0,0" IsEnabled="{Binding CanEditSettings}" />
+                <Button Grid.Column="2" Content="浏览" Command="{Binding BrowsePowerLogCommand}" Style="{StaticResource BaseButtonStyle}" Margin="8,0,0,0" IsEnabled="{Binding CanEditSettings}" />
+              </Grid>
+              <TextBlock Text="默认查找 %LOCALAPPDATA%\Blizzard\Hearthstone\Logs 下最近更新的 Power.log。请在启动游戏前确认日志输出已启用。"
+                         Style="{StaticResource HelperTextStyle}" Margin="0,8,0,10" />
+              <CheckBox Content="启动时回读当前 Power.log 中已有的内容"
+                        IsChecked="{Binding ReadExistingLogOnStart}"
+                        IsEnabled="{Binding CanEditSettings}"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Margin="0,0,0,18"
+                        ToolTip="开启后会解析当前日志文件中的历史内容，但历史摘要使用读取时间，不能表示真实对局时长；关闭后只监听新增内容。" />
+
+              <TextBlock Text="记录输出目录" Style="{StaticResource FieldLabelStyle}" />
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource InputTextBoxStyle}"
+                         IsEnabled="{Binding CanEditSettings}"
+                         AutomationProperties.Name="记录输出目录" />
+                <Button Grid.Column="1" Content="选择目录" Command="{Binding BrowseOutputCommand}" Style="{StaticResource BaseButtonStyle}" Margin="10,0,0,0" IsEnabled="{Binding CanEditSettings}" />
+                <Button Grid.Column="2" Content="打开目录" Command="{Binding OpenOutputCommand}" Style="{StaticResource BaseButtonStyle}" Margin="8,0,0,0" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="当前对局" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+          <UniformGrid Columns="4" Margin="-5,0,-5,20">
+            <Border Style="{StaticResource CardStyle}" Margin="5" Padding="16">
+              <StackPanel>
+                <TextBlock Text="阶段" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="{Binding MatchPhase}" Style="{StaticResource MetricValueStyle}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}" Margin="5" Padding="16">
+              <StackPanel>
+                <TextBlock Text="回合" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="{Binding TurnText}" Style="{StaticResource MetricValueStyle}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}" Margin="5" Padding="16">
+              <StackPanel>
+                <TextBlock Text="事件" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="{Binding EventCountText}" Style="{StaticResource MetricValueStyle}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardStyle}" Margin="5" Padding="16">
+              <StackPanel>
+                <TextBlock Text="实体" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="{Binding EntityCountText}" Style="{StaticResource MetricValueStyle}" />
+              </StackPanel>
+            </Border>
+          </UniformGrid>
+
+          <Border Style="{StaticResource CardStyle}" Padding="0">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="320" />
+              </Grid.RowDefinitions>
+              <Grid Grid.Row="0" Margin="20,18,20,12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="最近事件" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="仅显示最近 200 条" Foreground="{StaticResource TextMutedBrush}" FontSize="12" VerticalAlignment="Center" />
+              </Grid>
+              <ListBox Grid.Row="1"
+                       ItemsSource="{Binding RecentEvents}"
+                       Style="{StaticResource EventListStyle}"
+                       FontFamily="Consolas"
+                       FontSize="12"
+                       AutomationProperties.Name="最近对局事件">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2">
+          <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+            <StackPanel>
+              <TextBlock Text="记录器状态" Style="{StaticResource SectionTitleStyle}" />
+              <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="21" />
+              <TextBlock Text="{Binding SessionPath}" Style="{StaticResource HelperTextStyle}" Margin="0,10,0,18" />
+              <Button Content="开始记录"
+                      Command="{Binding StartCommand}"
+                      Style="{StaticResource PrimaryButtonStyle}"
+                      IsEnabled="{Binding CanStart}"
+                      AutomationProperties.HelpText="按照当前设置开始读取 Power.log 并保存对局事件" />
+              <Button Content="停止记录"
+                      Command="{Binding StopCommand}"
+                      Style="{StaticResource DangerButtonStyle}"
+                      IsEnabled="{Binding CanStop}"
+                      Margin="0,10,0,0" />
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+            <StackPanel>
+              <TextBlock Text="对局详情" Style="{StaticResource SectionTitleStyle}" />
+              <TextBlock Text="Match ID" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Text="{Binding MatchId}" FontFamily="Consolas" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,14" />
+              <TextBlock Text="当前行动方" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Text="{Binding CurrentPlayer}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,14" />
+              <TextBlock Text="最后事件" Style="{StaticResource FieldLabelStyle}" />
+              <TextBlock Text="{Binding LastEvent}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <Border Background="#2A1F0B" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+            <StackPanel>
+              <TextBlock Text="第一版运行边界" FontSize="16" FontWeight="SemiBold" Foreground="#FCD34D" Margin="0,0,0,8" />
+              <TextBlock Text="本版本只读取和记录 Power.log，不调用模型、不控制鼠标键盘、不会自动进入或操作对局。"
+                         Foreground="#FDE68A" TextWrapping="Wrap" LineHeight="20" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+      <Grid Margin="28,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="记录格式：JSONL + JSON 摘要" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding FooterStatus}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

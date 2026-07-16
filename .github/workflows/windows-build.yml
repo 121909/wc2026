@@ -1,0 +1,32 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Restore and build
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore HearthstoneAgent.sln
+
+      - name: Build
+        run: dotnet build HearthstoneAgent.sln --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
